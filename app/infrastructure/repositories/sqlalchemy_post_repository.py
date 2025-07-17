@@ -2,13 +2,13 @@ import json
 from uuid import UUID
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select, selectinload
+from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.domain.models.post import Post, PostContent, PostStatus, PublicationResult, Platform
-from app.domain.repositories.post_repository import PostRepository
-from app.infrastructure.database.models import PostEntity, PublicationEntity
-from app.core.logging import get_logger
+from domain.models.post import Post, PostContent, PostStatus, PublicationResult, Platform
+from domain.repositories.post_repository import PostRepository
+from infrastructure.database.models import PostEntity, PublicationEntity
+from core.logging import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,1 +1,1 @@
-# Repository interfaces 
+# Repository interfaces

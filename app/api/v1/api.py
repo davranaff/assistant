@@ -3,7 +3,7 @@ Main API v1 router
 """
 from fastapi import APIRouter
 
-from app.api.v1.telegram import router as telegram_router
+from api.v1.telegram import router as telegram_router
 
 api_router = APIRouter()
 

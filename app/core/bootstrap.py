@@ -1,44 +1,46 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+import asyncio
 
-from app.core.container import register_service, get_container
-from app.core.config import settings
+from core.container import register_service, register_async_service, get_container
+from core.config import settings
 
 # Domain repositories
-from app.domain.repositories.post_repository import PostRepository
+from domain.repositories.post_repository import PostRepository
 
 # Domain services
-from app.domain.services.content_generator import ContentGenerator
-from app.domain.services.publisher import Publisher
+from domain.services.content_generator import ContentGenerator
+from domain.services.publisher import Publisher
 
 # Use cases
-from app.application.use_cases.create_post import CreatePostUseCase
-from app.application.use_cases.confirm_post import ConfirmPostUseCase
-from app.application.use_cases.publish_post import PublishPostUseCase
-from app.application.use_cases.regenerate_content import RegenerateContentUseCase
+from application.use_cases.create_post import CreatePostUseCase
+from application.use_cases.confirm_post import ConfirmPostUseCase
+from application.use_cases.publish_post import PublishPostUseCase
+from application.use_cases.regenerate_content import RegenerateContentUseCase
 
 # Infrastructure implementations
-from app.infrastructure.repositories.sqlalchemy_post_repository import SqlAlchemyPostRepository
-from app.infrastructure.services.openai_content_generator import OpenAIContentGenerator
-from app.infrastructure.services.multi_platform_publisher import MultiPlatformPublisher
+from infrastructure.repositories.sqlalchemy_post_repository import SqlAlchemyPostRepository
+from infrastructure.services.openai_content_generator import OpenAIContentGenerator
+from infrastructure.services.multi_platform_publisher import MultiPlatformPublisher
 
 # Database
-from app.infrastructure.database.session import get_db
+from infrastructure.database.session import AsyncSessionLocal
+
+
+def create_post_repository_factory():
+    """Create factory for post repository"""
+    def factory():
+        # This will be called in async context
+        return SqlAlchemyPostRepository
+    return factory
 
 
 def configure_dependencies():
     """Configure dependency injection container"""
 
-    # Register repositories
-    register_service(
-        PostRepository,
-        lambda: SqlAlchemyPostRepository(get_db().__next__()),
-        singleton=False
-    )
-
     # Register domain services
     register_service(
         ContentGenerator,
-        lambda: OpenAIContentGenerator(settings.openai_api_key),
+        lambda: OpenAIContentGenerator(settings.together_api_key),
         singleton=True
     )
 
@@ -57,11 +59,11 @@ def configure_dependencies():
         singleton=True
     )
 
-    # Register use cases
+    # Register use cases with repository factory
     register_service(
         CreatePostUseCase,
         lambda: CreatePostUseCase(
-            post_repository=get_container().resolve(PostRepository),
+            post_repository_factory=create_post_repository_factory(),
             content_generator=get_container().resolve(ContentGenerator)
         ),
         singleton=False
@@ -70,7 +72,7 @@ def configure_dependencies():
     register_service(
         ConfirmPostUseCase,
         lambda: ConfirmPostUseCase(
-            post_repository=get_container().resolve(PostRepository)
+            post_repository_factory=create_post_repository_factory()
         ),
         singleton=False
     )
@@ -78,7 +80,7 @@ def configure_dependencies():
     register_service(
         PublishPostUseCase,
         lambda: PublishPostUseCase(
-            post_repository=get_container().resolve(PostRepository),
+            post_repository_factory=create_post_repository_factory(),
             publisher=get_container().resolve(Publisher)
         ),
         singleton=False
@@ -87,7 +89,7 @@ def configure_dependencies():
     register_service(
         RegenerateContentUseCase,
         lambda: RegenerateContentUseCase(
-            post_repository=get_container().resolve(PostRepository),
+            post_repository_factory=create_post_repository_factory(),
             content_generator=get_container().resolve(ContentGenerator)
         ),
         singleton=False

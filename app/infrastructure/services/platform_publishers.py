@@ -1,8 +1,8 @@
 import httpx
 from typing import List
 from datetime import datetime
-from app.domain.models.post import Platform, PublicationResult
-from app.core.logging import get_logger
+from domain.models.post import Platform, PublicationResult
+from core.logging import get_logger
 
 logger = get_logger(__name__)
 

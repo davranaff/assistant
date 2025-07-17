@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException
 from aiogram import Bot, Dispatcher, types
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler
-import json
 
-from app.infrastructure.telegram.bot_handlers import TelegramBotHandlers
-from app.core.config import settings
-from app.core.logging import get_logger
+from infrastructure.telegram.bot_handlers import TelegramBotHandlers, TELEGRAM_BOT_COMMANDS
+from core.config import settings
+from core.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -29,19 +27,19 @@ def setup_bot_handlers():
     """Setup bot message and callback handlers"""
 
     # Command handlers
-    @dp.message(lambda message: message.text == "/start")
+    @dp.message(lambda message: message.text == TELEGRAM_BOT_COMMANDS.START)
     async def handle_start_command(message: types.Message):
         await handlers.handle_start(message)
 
-    @dp.message(lambda message: message.text == "/help")
+    @dp.message(lambda message: message.text == TELEGRAM_BOT_COMMANDS.HELP)
     async def handle_help_command(message: types.Message):
         await handlers.handle_help(message)
 
-    @dp.message(lambda message: message.text == "/new_post")
+    @dp.message(lambda message: message.text == TELEGRAM_BOT_COMMANDS.NEW_POST)
     async def handle_new_post_command(message: types.Message):
         await handlers.handle_new_post(message)
 
-    @dp.message(lambda message: message.text == "/my_posts")
+    @dp.message(lambda message: message.text == TELEGRAM_BOT_COMMANDS.MY_POSTS)
     async def handle_my_posts_command(message: types.Message):
         await handlers.handle_my_posts(message)
 
@@ -54,8 +52,8 @@ def setup_bot_handlers():
         else:
             await message.answer(
                 "Use commands:\n"
-                "/new_post - create article\n"
-                "/help - help"
+                f"{TELEGRAM_BOT_COMMANDS.NEW_POST} - create article\n"
+                f"{TELEGRAM_BOT_COMMANDS.HELP} - help"
             )
 
     # Callback query handler
@@ -94,11 +92,13 @@ async def webhook(request: Request):
 async def set_webhook():
     """Set webhook URL"""
     try:
+        logger.info(f"Current webhook_base_url: {settings.webhook_base_url}")
         webhook_url = f"{settings.webhook_base_url}/api/v1/telegram/webhook"
+        logger.info(f"Setting webhook to: {webhook_url}")
 
         await get_bot().set_webhook(
             url=webhook_url,
-            drop_pending_updates=True
+            drop_pending_updates=False
         )
 
         logger.info(f"Webhook set to: {webhook_url}")

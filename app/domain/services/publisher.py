@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict
-from app.domain.models.post import Post, Platform, PublicationResult
+from domain.models.post import Post, Platform, PublicationResult
 
 
 class Publisher(ABC):

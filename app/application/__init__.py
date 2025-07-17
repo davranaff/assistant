@@ -1,2 +1,2 @@
 # Application layer
-# Use cases and application services 
+# Use cases and application services

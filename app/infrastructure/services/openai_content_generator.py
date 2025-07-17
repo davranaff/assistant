@@ -1,15 +1,17 @@
 from typing import List, Optional
-import openai
-from app.domain.models.post import PostContent, Platform
-from app.domain.services.content_generator import ContentGenerator
-from app.core.logging import get_logger
+import asyncio
+from domain.models.post import PostContent, Platform
+from domain.services.content_generator import ContentGenerator
+from core.logging import get_logger
+from together import Together
 
 logger = get_logger(__name__)
 
 
 class OpenAIContentGenerator(ContentGenerator):
-    def __init__(self, api_key: str):
-        self._client = openai.OpenAI(api_key=api_key)
+    def __init__(self, api_key: str, model: str = "meta-llama/Llama-Vision-Free"):
+        self._together_client = Together(api_key=api_key)
+        self._model = model
 
     async def generate_content(
         self,
@@ -17,7 +19,7 @@ class OpenAIContentGenerator(ContentGenerator):
         target_platform: Optional[Platform] = None,
         tags: Optional[List[str]] = None
     ) -> PostContent:
-        """Generate content using OpenAI"""
+        """Generate content using Together AI"""
         logger.info(f"Generating content for topic: {topic}")
 
         platform_prompts = {
@@ -47,8 +49,10 @@ class OpenAIContentGenerator(ContentGenerator):
         """
 
         try:
-            response = self._client.chat.completions.create(
-                model="gpt-4o-mini",
+            # Run Together AI call in thread pool to avoid blocking
+            response = await asyncio.to_thread(
+                self._together_client.chat.completions.create,
+                model=self._model,
                 messages=[
                     {"role": "system", "content": "You are an experienced technical writer and blogger. You create quality content."},
                     {"role": "user", "content": prompt}
@@ -68,7 +72,7 @@ class OpenAIContentGenerator(ContentGenerator):
             )
 
         except Exception as e:
-            logger.error(f"OpenAI generation failed: {e}")
+            logger.error(f"AI generation failed: {e}")
             # Fallback content
             return PostContent(
                 title=f"Article on topic: {topic}",
@@ -107,8 +111,10 @@ class OpenAIContentGenerator(ContentGenerator):
         """
 
         try:
-            response = self._client.chat.completions.create(
-                model="gpt-4o-mini",
+            # Run Together AI call in thread pool to avoid blocking
+            response = await asyncio.to_thread(
+                self._together_client.chat.completions.create,
+                model=self._model,
                 messages=[
                     {"role": "system", "content": "You are an experienced technical writer and blogger. You create quality content."},
                     {"role": "user", "content": prompt}
@@ -128,7 +134,7 @@ class OpenAIContentGenerator(ContentGenerator):
             )
 
         except Exception as e:
-            logger.error(f"OpenAI regeneration failed: {e}")
+            logger.error(f"Together AI regeneration failed: {e}")
             # Fallback - return slightly modified version
             return PostContent(
                 title=f"Updated article: {previous_content.topic}",
@@ -138,7 +144,7 @@ class OpenAIContentGenerator(ContentGenerator):
             )
 
     def _parse_response(self, content: str) -> tuple[str, str]:
-        """Parse OpenAI response to extract title and body"""
+        """Parse Together AI response to extract title and body"""
         lines = content.split('\n')
         title = ""
         body = ""

@@ -1,13 +1,12 @@
 """
 Database models for AutoPoster Bot
 """
-from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Text, Integer, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 
-from app.infrastructure.database.base import BaseModel
+from infrastructure.database.base import BaseModel
 
 
 class PostEntity(BaseModel):
