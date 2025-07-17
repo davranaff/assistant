@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from app.domain.models.post import PostContent, Platform
+from domain.models.post import PostContent, Platform
 
 
 class ContentGenerator(ABC):

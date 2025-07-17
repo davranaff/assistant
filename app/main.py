@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from app.core.config import settings
-from app.core.logging import setup_logging
-from app.core.bootstrap import bootstrap_application
-from app.api.v1.api import api_router
-from app.api.v1.telegram import cleanup_bot
+from core.config import settings
+from core.logging import setup_logging
+from core.bootstrap import bootstrap_application
+from api.v1.api import api_router
+from api.v1.telegram import cleanup_bot
 
 
 @asynccontextmanager
@@ -14,9 +14,9 @@ async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
     bootstrap_application()
-    
+
     yield
-    
+
     # Shutdown
     await cleanup_bot()
 
@@ -62,7 +62,7 @@ def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "app.main:app",
+        "main:app",
         host="0.0.0.0",
         port=8000,
         reload=settings.debug

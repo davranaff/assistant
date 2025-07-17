@@ -1,20 +1,22 @@
+from typing import Optional, Callable
 from uuid import UUID
 from dataclasses import dataclass
-from typing import Optional
 
-from app.domain.models.post import PostContent, Platform
-from app.domain.repositories.post_repository import PostRepository
-from app.domain.services.content_generator import ContentGenerator
-from app.core.logging import get_logger
+from domain.models.post import Post, PostContent
+from domain.repositories.post_repository import PostRepository
+from domain.services.content_generator import ContentGenerator
+from core.logging import get_logger
+
+from infrastructure.database.session import AsyncSessionLocal
+from infrastructure.repositories.sqlalchemy_post_repository import SqlAlchemyPostRepository
 
 logger = get_logger(__name__)
 
 
 @dataclass
 class RegenerateContentCommand:
-    post_id: UUID
-    user_id: int
-    target_platform: Optional[Platform] = None
+    post_id: str
+    target_platform: Optional[str] = None
 
 
 @dataclass
@@ -27,59 +29,58 @@ class RegenerateContentResult:
 class RegenerateContentUseCase:
     def __init__(
         self,
-        post_repository: PostRepository,
+        post_repository_factory: Callable[[], type[PostRepository]],
         content_generator: ContentGenerator
     ):
-        self._post_repository = post_repository
+        self._post_repository_factory = post_repository_factory
         self._content_generator = content_generator
 
     async def execute(self, command: RegenerateContentCommand) -> RegenerateContentResult:
         """Execute regenerate content use case"""
         try:
-            logger.info(f"Regenerating content for post {command.post_id}")
+            logger.info(f"Regenerating content for post: {command.post_id}")
 
-            # Get post from repository
-            post = await self._post_repository.get_by_id(command.post_id)
-            if not post:
-                return RegenerateContentResult(
-                    success=False,
-                    error_message="Post not found"
+            # Create repository with session
+            session = AsyncSessionLocal()
+            try:
+                repository = SqlAlchemyPostRepository(session)
+                
+                # Get post
+                post = await repository.get_by_id(UUID(command.post_id))
+                if not post:
+                    return RegenerateContentResult(
+                        success=False,
+                        error_message="Post not found"
+                    )
+
+                # Check if post is in draft status
+                if post.status.value != "draft":
+                    return RegenerateContentResult(
+                        success=False,
+                        error_message="Only draft posts can be regenerated"
+                    )
+
+                # Regenerate content
+                new_content = await self._content_generator.regenerate_content(
+                    previous_content=post.content
                 )
 
-            # Check if user owns the post
-            if post.user_id != command.user_id:
-                return RegenerateContentResult(
-                    success=False,
-                    error_message="Access denied"
-                )
+                # Update post content
+                post.update_content(new_content)
+                await repository.save(post)
+                await session.commit()
+            finally:
+                await session.close()
 
-            # Regenerate content
-            new_content = await self._content_generator.regenerate_content(
-                previous_content=post.content,
-                target_platform=command.target_platform
-            )
-
-            # Update post with new content
-            post.update_content(new_content)
-
-            # Save updated post
-            await self._post_repository.save(post)
-
-            logger.info(f"Content regenerated successfully for post {post.id}")
+            logger.info(f"Content regenerated successfully: {command.post_id}")
 
             return RegenerateContentResult(
                 success=True,
                 content=new_content
             )
 
-        except ValueError as e:
-            logger.warning(f"Invalid operation: {e}")
-            return RegenerateContentResult(
-                success=False,
-                error_message=str(e)
-            )
         except Exception as e:
-            logger.error(f"Failed to regenerate content for post {command.post_id}: {e}")
+            logger.error(f"Failed to regenerate content: {e}")
             return RegenerateContentResult(
                 success=False,
                 error_message=str(e)

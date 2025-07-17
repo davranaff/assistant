@@ -1,1 +1,1 @@
-# Domain service interfaces 
+# Domain service interfaces

@@ -1,13 +1,12 @@
 from typing import List, Dict
-from datetime import datetime
-from app.domain.models.post import Post, Platform, PublicationResult
-from app.domain.services.publisher import Publisher
-from app.infrastructure.services.platform_publishers import (
+from domain.models.post import Post, Platform, PublicationResult
+from domain.services.publisher import Publisher
+from infrastructure.services.platform_publishers import (
     MediumPublisher,
     DevToPublisher,
     RedditPublisher
 )
-from app.core.logging import get_logger
+from core.logging import get_logger
 
 logger = get_logger(__name__)
 

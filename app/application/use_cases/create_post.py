@@ -1,11 +1,15 @@
-from typing import List, Optional
+from typing import List, Optional, Callable
 from uuid import uuid4
 from dataclasses import dataclass
 
-from app.domain.models.post import Post, PostContent, Platform
-from app.domain.repositories.post_repository import PostRepository
-from app.domain.services.content_generator import ContentGenerator
-from app.core.logging import get_logger
+
+from domain.models.post import Post, PostContent, Platform
+from domain.repositories.post_repository import PostRepository
+from domain.services.content_generator import ContentGenerator
+from core.logging import get_logger
+
+from infrastructure.database.session import AsyncSessionLocal
+from infrastructure.repositories.sqlalchemy_post_repository import SqlAlchemyPostRepository
 
 logger = get_logger(__name__)
 
@@ -29,10 +33,10 @@ class CreatePostResult:
 class CreatePostUseCase:
     def __init__(
         self,
-        post_repository: PostRepository,
+        post_repository_factory: Callable[[], type[PostRepository]],
         content_generator: ContentGenerator
     ):
-        self._post_repository = post_repository
+        self._post_repository_factory = post_repository_factory
         self._content_generator = content_generator
 
     async def execute(self, command: CreatePostCommand) -> CreatePostResult:
@@ -54,8 +58,9 @@ class CreatePostUseCase:
                 user_id=command.user_id
             )
 
-            # Save to repository
-            saved_post = await self._post_repository.save(post)
+            async with AsyncSessionLocal() as session:
+                repository = SqlAlchemyPostRepository(session)
+                saved_post = await repository.save(post)
 
             logger.info(f"Post created successfully: {saved_post.id}")
 

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
 
-from app.domain.models.post import Post, PostStatus
+from domain.models.post import Post, PostStatus
 
 
 class PostRepository(ABC):

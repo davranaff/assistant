@@ -1,12 +1,11 @@
 import logging
 import sys
-from typing import Optional
 
 
 def get_logger(name: str) -> logging.Logger:
     """Get configured logger instance"""
     logger = logging.getLogger(name)
-    
+
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(
@@ -15,7 +14,7 @@ def get_logger(name: str) -> logging.Logger:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
-    
+
     return logger
 
 
@@ -28,4 +27,4 @@ def setup_logging(level: str = "INFO"):
             logging.StreamHandler(sys.stdout),
             logging.FileHandler("app.log")
         ]
-    ) 
+    )

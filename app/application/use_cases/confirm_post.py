@@ -1,17 +1,20 @@
+from typing import Optional, Callable
 from uuid import UUID
 from dataclasses import dataclass
-from typing import Optional
 
-from app.domain.repositories.post_repository import PostRepository
-from app.core.logging import get_logger
+from domain.models.post import Post, PostStatus
+from domain.repositories.post_repository import PostRepository
+from core.logging import get_logger
+
+from infrastructure.database.session import AsyncSessionLocal
+from infrastructure.repositories.sqlalchemy_post_repository import SqlAlchemyPostRepository
 
 logger = get_logger(__name__)
 
 
 @dataclass
 class ConfirmPostCommand:
-    post_id: UUID
-    user_id: int
+    post_id: str
 
 
 @dataclass
@@ -21,47 +24,40 @@ class ConfirmPostResult:
 
 
 class ConfirmPostUseCase:
-    def __init__(self, post_repository: PostRepository):
-        self._post_repository = post_repository
+    def __init__(self, post_repository_factory: Callable[[], type[PostRepository]]):
+        self._post_repository_factory = post_repository_factory
 
     async def execute(self, command: ConfirmPostCommand) -> ConfirmPostResult:
         """Execute confirm post use case"""
         try:
-            logger.info(f"Confirming post {command.post_id} for user {command.user_id}")
+            logger.info(f"Confirming post: {command.post_id}")
 
-            # Get post from repository
-            post = await self._post_repository.get_by_id(command.post_id)
-            if not post:
-                return ConfirmPostResult(
-                    success=False,
-                    error_message="Post not found"
-                )
+            # Create repository with session
+            session = AsyncSessionLocal()
+            try:
+                repository = SqlAlchemyPostRepository(session)
+                
+                # Get post
+                post = await repository.get_by_id(UUID(command.post_id))
+                if not post:
+                    return ConfirmPostResult(
+                        success=False,
+                        error_message="Post not found"
+                    )
 
-            # Check if user owns the post
-            if post.user_id != command.user_id:
-                return ConfirmPostResult(
-                    success=False,
-                    error_message="Access denied"
-                )
+                # Confirm post
+                post.confirm()
+                await repository.save(post)
+                await session.commit()
+            finally:
+                await session.close()
 
-            # Confirm the post
-            post.confirm()
-
-            # Save updated post
-            await self._post_repository.save(post)
-
-            logger.info(f"Post {post.id} confirmed successfully")
+            logger.info(f"Post confirmed successfully: {command.post_id}")
 
             return ConfirmPostResult(success=True)
 
-        except ValueError as e:
-            logger.warning(f"Invalid operation: {e}")
-            return ConfirmPostResult(
-                success=False,
-                error_message=str(e)
-            )
         except Exception as e:
-            logger.error(f"Failed to confirm post {command.post_id}: {e}")
+            logger.error(f"Failed to confirm post: {e}")
             return ConfirmPostResult(
                 success=False,
                 error_message=str(e)
